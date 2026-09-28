@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.deepeval/
+.cache/
+.ipynb_checkpoints/
+.vscode/
+.idea/
+*.log
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+.env

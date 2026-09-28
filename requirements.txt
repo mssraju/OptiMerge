@@ -1,3 +1,12 @@
-tqdm
-fire
+torch
+transformers
+vllm
+deepeval
 numpy
+numba
+PyYAML
+pynvml
+pandas
+scikit-learn
+datasets
+tqdm

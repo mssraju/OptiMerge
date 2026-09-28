@@ -1,115 +1,168 @@
-# HumanEval: Hand-Written Evaluation Set 
+OptiMerge: A Proxy-Guided Multi-Objective Framework for Configuration Optimization in Merging Large Language Models
 
-This is an evaluation harness for the HumanEval problem solving dataset
-described in the paper "[Evaluating Large Language Models Trained on
-Code](https://arxiv.org/abs/2107.03374)".
+This repository contains the implementation and experimental resources for the paper:
 
-## Installation
+A Proxy-Guided Multi-Objective Framework for Configuration Optimization in Merging Large Language Models
 
-Make sure to use python 3.7 or later:
-```
-$ conda create -n codex python=3.7
-$ conda activate codex
-```
+Overview
 
-Check out and install this repository:
-```
-$ git clone https://github.com/openai/human-eval
-$ pip install -e human-eval
-```
+OptiMerge is a multi-objective evolutionary framework for automatically discovering effective model-merging configurations for Large Language Models (LLMs).
 
-## Usage
+Instead of manually tuning model-merging parameters or performing an exhaustive grid search, OptiMerge formulates model merging as a multi-objective optimization problem. The framework searches for merging configurations that provide a good balance of performance across multiple downstream tasks.
 
-**This program exists to run untrusted model-generated code. Users are strongly
-encouraged not to do so outside of a robust security sandbox. The [execution
-call](https://github.com/openai/human-eval/blob/master/human_eval/execution.py#L48-L58)
-in `execution.py` is deliberately commented out to ensure users read this
-disclaimer before running code in a potentially unsafe manner. See the comment in
-`execution.py` for more information and instructions.**
+The framework uses a structured representation of layer-wise merging parameters and a proxy-guided screening strategy to reduce the number of expensive full model evaluations.
 
-After following the above instructions to enable execution, generate samples
-and save them in the following JSON Lines (jsonl) format, where each sample is
-formatted into a single line like so:
-```
-{"task_id": "Corresponding HumanEval task ID", "completion": "Completion only without the prompt"}
-```
-We provide `example_problem.jsonl` and `example_solutions.jsonl` under `data`
-to illustrate the format and help with debugging.
+In this repository, the main experimental setting focuses on TIES-Merging with Mistral-7B models, where performance on the following three benchmarks is jointly considered:
 
-Here is nearly functional example code (you just have to provide
-`generate_one_completion` to make it work) that saves generated completions to
-`samples.jsonl`.
-```
-from human_eval.data import write_jsonl, read_problems
+GSM8K
+HumanEval
+MedQA
 
-problems = read_problems()
+The three task accuracies are treated as optimization objectives.
 
-num_samples_per_task = 200
-samples = [
-    dict(task_id=task_id, completion=generate_one_completion(problems[task_id]["prompt"]))
-    for task_id in problems
-    for _ in range(num_samples_per_task)
-]
-write_jsonl("samples.jsonl", samples)
-```
+Main Entry Point
 
-To evaluate the samples, run
-```
-$ evaluate_functional_correctness samples.jsonl
-Reading samples...
-32800it [00:01, 23787.50it/s]
-Running test suites...
-100%|...| 32800/32800 [16:11<00:00, 33.76it/s]
-Writing results to samples.jsonl_results.jsonl...
-100%|...| 32800/32800 [00:00<00:00, 42876.84it/s]
-{'pass@1': ..., 'pass@10': ..., 'pass@100': ...}
-```
-This script provides more fine-grained information in a new file ending in
-`<input_path>_results.jsonl`. Each row now contains whether the completion
-`passed` along with the execution `result` which is one of "passed", "timed
-out", or "failed".
+The main executable file is:
 
-As a quick sanity-check, the example samples should yield 0.5 pass@1.
-```
-$ evaluate_functional_correctness data/example_samples.jsonl --problem_file=data/example_problem.jsonl
-Reading samples...
-6it [00:00, 3397.11it/s]
-Running example suites...
-100%|...| 6/6 [00:03<00:00,  1.96it/s]
-Writing results to data/example_samples.jsonl_results.jsonl...
-100%|...| 6/6 [00:00<00:00, 6148.50it/s]
-{'pass@1': 0.4999999999999999}
-```
+Mistral3B.py
 
-Because there is no unbiased way of estimating pass@k when there are fewer
-samples than k, the script does not evaluate pass@k for these cases. To
-evaluate with other k values, pass `--k=<comma-separated-values-here>`. For
-other options, see
-```
-$ evaluate_functional_correctness --help
-```
-However, we recommend that you use the default values for the rest.
+Running:
 
-## Known Issues
+python Mistral3B.py
 
-While evaluation uses very little memory, you might see the following error
-message when the system is running out of RAM. Since this may cause some
-correct programs to fail, we recommend that you free some memory and try again.
-```
-malloc: can't allocate region
-```
+starts the OptiMerge optimization process.
 
-## Citation
+The program searches for an optimized TIES-Merging configuration using Mistral-7B as the base model and simultaneously considers performance on:
 
-Please cite using the following bibtex entry:
+GSM8K
+HumanEval
+MedQA
 
-```
-@article{chen2021codex,
-  title={Evaluating Large Language Models Trained on Code},
-  author={Mark Chen and Jerry Tworek and Heewoo Jun and Qiming Yuan and Henrique Ponde de Oliveira Pinto and Jared Kaplan and Harri Edwards and Yuri Burda and Nicholas Joseph and Greg Brockman and Alex Ray and Raul Puri and Gretchen Krueger and Michael Petrov and Heidy Khlaaf and Girish Sastry and Pamela Mishkin and Brooke Chan and Scott Gray and Nick Ryder and Mikhail Pavlov and Alethea Power and Lukasz Kaiser and Mohammad Bavarian and Clemens Winter and Philippe Tillet and Felipe Petroski Such and Dave Cummings and Matthias Plappert and Fotios Chantzis and Elizabeth Barnes and Ariel Herbert-Voss and William Hebgen Guss and Alex Nichol and Alex Paino and Nikolas Tezak and Jie Tang and Igor Babuschkin and Suchir Balaji and Shantanu Jain and William Saunders and Christopher Hesse and Andrew N. Carr and Jan Leike and Josh Achiam and Vedant Misra and Evan Morikawa and Alec Radford and Matthew Knight and Miles Brundage and Mira Murati and Katie Mayer and Peter Welinder and Bob McGrew and Dario Amodei and Sam McCandlish and Ilya Sutskever and Wojciech Zaremba},
-  year={2021},
-  eprint={2107.03374},
-  archivePrefix={arXiv},
-  primaryClass={cs.LG}
-}
-```
+as the optimization objectives.
+
+The optimization process searches over the model-merging configuration and evaluates candidate merged models across the three tasks to identify configurations that provide favorable multi-task performance.
+
+Optimization Framework
+
+OptiMerge formulates model merging as a multi-objective optimization problem.
+
+Objectives
+
+The optimization objectives are the task-specific accuracies:
+
+Objective 1: GSM8K accuracy
+Objective 2: HumanEval accuracy
+Objective 3: MedQA accuracy
+Decision Variables
+
+The decision variables represent the parameters controlling the model-merging process, including layer-wise merging parameters.
+
+A structured chromosome representation is used to encode these parameters so that evolutionary operators can operate on the merging configuration.
+
+Evolutionary Optimization
+
+OptiMerge uses NSGA-II to search the configuration space and maintain a diverse set of non-dominated solutions.
+
+The framework additionally employs a Proxy-Guided Screening (PGS) strategy to identify low-potential configurations before expensive full downstream-task evaluation.
+
+TIES Model Merging
+
+The main experiment in this repository uses TIES-Merging.
+
+The optimization process searches for TIES configurations that provide a favorable trade-off between performance on:
+
+GSM8K
+HumanEval
+MedQA
+
+The TIES merging implementation is integrated with the OptiMerge optimization process.
+
+Experimental Models
+
+The experiments use:
+
+Mistral-7B-Instruct-v0.3
+Mathstral-7B-v0.1
+
+as the base models for the model-merging experiments described in the paper.
+
+Running the Main Experiment
+
+After installing the required dependencies and preparing the required models and datasets, run:
+
+python Mistral3B.py
+
+The script initializes the optimization process and searches for promising TIES-Merging configurations.
+
+The resulting configurations can then be evaluated on the target benchmarks to analyze their multi-task performance.
+
+Benchmarks
+GSM8K
+
+GSM8K is used to measure mathematical reasoning performance.
+
+HumanEval
+
+HumanEval is used to evaluate code-generation performance.
+
+MedQA
+
+MedQA is used to evaluate medical question-answering performance.
+
+The three benchmarks provide complementary measures of the capabilities of the resulting merged models.
+
+Experimental Configuration
+
+The experiments reported in the paper investigate different chromosome segment lengths, including:
+
+len = 1
+len = 4
+
+The population size is set to:
+
+8
+
+The termination criteria are:
+
+len = 1: 32 functional evaluations
+len = 4: 64 functional evaluations
+
+The experiments were conducted using an NVIDIA GeForce RTX 3090 GPU.
+
+Repository Structure
+OptiMerge-TIES-Mist/
+│
+├── Mistral3B.py          # Main OptiMerge optimization script
+├── Para.py               # Optimization-related implementation
+├── Para_v1.py            # Alternative/version of optimization implementation
+├── ModelEvaluator.py     # Model evaluation utilities
+├── LLMLoad.py            # Model loading utilities
+├── LogME.py              # LogME-related utilities
+├── utils.py              # General utilities
+│
+├── yml/                  # Model-merging configuration files
+├── data/                 # Dataset and experimental data
+│
+├── gsm8k/                # GSM8K evaluation resources
+├── humaneval/            # HumanEval evaluation resources
+├── human_eval/           # HumanEval evaluation implementation
+│
+├── mergekit/             # Model-merging toolkit
+├── model/                # Model-related resources
+│
+├── setup.py
+├── LICENSE
+└── README.md
+Reproducibility
+
+To reproduce the main optimization experiment:
+
+Install the required Python dependencies.
+Prepare the required base models.
+Prepare the GSM8K, HumanEval, and MedQA datasets.
+Configure the model-merging parameters.
+Run:
+python Mistral3B.py
+Evaluate the resulting merged configurations on the three target benchmarks.
+
+The optimization process is computationally intensive because candidate merged models need to be evaluated on downstream tasks.
